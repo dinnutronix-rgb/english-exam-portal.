@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teacher Admin & Proctor Console | English Assessment Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- TEACHER LOGIN MODAL -->
+  <div id="teacherLoginScreen" class="flex-1 flex items-center justify-center p-6">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-sm w-full p-8">
+      <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">Protected Console</span>
+      <h1 class="text-2xl font-extrabold text-slate-900 mt-2 mb-1">Teacher Admin Login</h1>
+      <p class="text-xs text-slate-500 mb-6">Enter administrator credentials to configure papers and monitor candidates.</p>
+
+      <div id="teacherLoginError" class="hidden mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium"></div>
+
+      <form id="teacherLoginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">User ID</label>
+          <input type="text" id="tUserId" required value="DREXWEB"
+            class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm font-mono focus:ring-2 focus:ring-indigo-600 focus:outline-none" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Password</label>
+          <input type="password" id="tPassword" required placeholder="••••••••"
+            class="w-full px-3.5 py-2 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none" />
+        </div>
+        <button type="submit"
+          class="w-full py-2.5 bg-slate-900 hover:bg-indigo-600 text-white font-bold rounded-lg text-sm transition">
+          Access Admin Console
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TEACHER MAIN CONSOLE -->
+  <div id="teacherMainConsole" class="hidden flex-1 flex flex-col">
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900 text-white px-6 py-3 flex flex-wrap items-center justify-between gap-4 shadow">
+      <div class="flex items-center space-x-3">
+        <span class="px-2.5 py-1 bg-indigo-600 rounded text-xs font-extrabold tracking-wider">PROCTOR &amp; ADMIN</span>
+        <h1 class="font-bold text-base">Online English Assessment Control Center</h1>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <button data-nav="proctorTab" class="nav-btn bg-indigo-600 text-white text-xs font-bold px-3.5 py-2 rounded-lg">
+          Live Proctor Dashboard
+        </button>
+        <button data-nav="builderTab" class="nav-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-lg">
+          Paper Builder &amp; Grading Keys
+        </button>
+        <button id="btnLogoutTeacher" class="text-xs text-slate-400 hover:text-white px-2">Logout</button>
+      </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
+
+      <!-- TAB 1: LIVE PROCTORING & GOOGLE SHEET SYNC -->
+      <section id="proctorTab" class="space-y-6">
+        <!-- KPI Summary Row -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs text-slate-500 font-medium">Total Logged In</span>
+            <div id="kpiTotal" class="text-2xl font-extrabold text-slate-900 mt-1">0</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs text-slate-500 font-medium">Active Writing</span>
+            <div id="kpiActive" class="text-2xl font-extrabold text-emerald-600 mt-1">0</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-red-200 shadow-sm bg-red-50/40">
+            <span class="text-xs text-red-700 font-bold">Suspended (Locked)</span>
+            <div id="kpiLocked" class="text-2xl font-extrabold text-red-600 mt-1">0</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs text-slate-500 font-medium">Submitted</span>
+            <div id="kpiSubmitted" class="text-2xl font-extrabold text-indigo-600 mt-1">0</div>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <span class="text-xs text-slate-500 font-medium">Sheet Sync Queue</span>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="kpiSynced" class="text-xl font-extrabold text-slate-800">0 synced</span>
+              <span id="kpiQueuePending" class="text-xs font-bold text-amber-600">(0 queued)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Broadcast & Sync Action Bar -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center space-x-2 flex-1 min-w-[280px]">
+            <input type="text" id="broadcastMessageInput" placeholder="Broadcast warning banner to all active students..."
+              class="flex-1 px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-600 focus:outline-none" />
+            <button id="btnBroadcastWarn"
+              class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs px-4 py-2 rounded-lg transition shrink-0">
+              Broadcast Alert
+            </button>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button id="btnUnlockAll"
+              class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition">
+              Unlock All Suspended
+            </button>
+            <button id="btnTriggerSheetSync"
+              class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition">
+              Sync Pending to Google Sheet
+            </button>
+            <button id="btnForceResyncAll"
+              class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs px-3.5 py-2 rounded-lg transition">
+              Force Push All Submitted
+            </button>
+          </div>
+        </div>
+
+        <div id="syncStatusBanner" class="text-xs text-slate-500 px-1"></div>
+
+        <!-- Candidate Monitoring Table -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+            <h2 class="font-bold text-sm text-slate-800">Live Candidate Proctoring Table (Auto-refreshes every 4s)</h2>
+            <input type="text" id="studentSearchFilter" placeholder="Filter by Name, ID, or Grade..."
+              class="px-3 py-1.5 rounded-lg border border-slate-300 text-xs w-64 focus:outline-none focus:ring-2 focus:ring-indigo-600" />
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-50 text-slate-600 border-b border-slate-200 uppercase">
+                  <th class="p-3">Admission No</th>
+                  <th class="p-3">Full Name</th>
+                  <th class="p-3">Grade</th>
+                  <th class="p-3">Status</th>
+                  <th class="p-3">Progress / Audio</th>
+                  <th class="p-3">Violations</th>
+                  <th class="p-3">Auto Score</th>
+                  <th class="p-3 text-right">Proctor Controls</th>
+                </tr>
+              </thead>
+              <tbody id="candidateTableBody" class="divide-y divide-slate-200"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: PAPER BUILDER, RAPID 300-MCQ KEY MAPPER & MARKING CONFIG -->
+      <section id="builderTab" class="hidden space-y-6">
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
+          <div class="flex items-center justify-between border-b pb-4">
+            <div>
+              <h2 class="text-lg font-extrabold text-slate-900">Paper Builder &amp; Grading Configuration</h2>
+              <p class="text-xs text-slate-500">Changes take effect immediately for new and active students. Master keys are never exposed to client browsers.</p>
+            </div>
+            <span id="saveConfigBadge" class="hidden text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+              Configuration Saved!
+            </span>
+          </div>
+
+          <form id="paperConfigForm" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- General Settings -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Assessment Title</label>
+                <input type="text" id="cfgTitle" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Duration (Minutes)</label>
+                  <input type="number" id="cfgDuration" min="5" max="300" required class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Question Paper Format</label>
+                  <select id="cfgPaperType" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                    <option value="text">Formatted Text / Passage</option>
+                    <option value="pdf">Embedded PDF URL</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">PDF URL (If PDF Mode Selected)</label>
+                <input type="url" id="cfgPdfUrl" placeholder="https://example.com/english-paper.pdf"
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Question Paper Text (Left Split-Screen Viewport)</label>
+                <textarea id="cfgPaperContent" rows="12"
+                  class="w-full p-3 rounded-lg border border-slate-300 text-xs font-mono leading-relaxed"></textarea>
+              </div>
+            </div>
+
+            <!-- Grading, Bulk MCQ Mapper, Audio & Google Sheets -->
+            <div class="space-y-4">
+              <div class="grid grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Total MCQs (Max 300)</label>
+                  <input type="number" id="cfgMcqCount" min="0" max="300" required
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-bold" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Marking Scheme</label>
+                  <select id="cfgMarkingScheme" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm bg-white">
+                    <option value="standard">Standard (+1 / 0)</option>
+                    <option value="negative">Negative (+1 / -X)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Negative Penalty</label>
+                  <input type="number" id="cfgNegativeMark" step="0.05" value="-0.25"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+                </div>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="text-xs font-bold uppercase text-slate-600">Rapid Bulk MCQ Answer Key (Up to 300 MCQs)</label>
+                  <span id="parsedKeyCounter" class="text-[11px] font-bold text-indigo-600">0 keys active</span>
+                </div>
+                <textarea id="cfgBulkKeyRaw" rows="4"
+                  placeholder="Paste format: 1:A, 2:C, 3:D, 4:B  OR  line-by-line (1-A)  OR  continuous string ABCD..."
+                  class="w-full p-3 rounded-lg border border-slate-300 text-xs font-mono"></textarea>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Fill-in-the-Blanks Count</label>
+                  <input type="number" id="cfgBlanksCount" min="0" max="50"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
+                </div>
+                <div>
+                  <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Fill-in-the-Blanks Answer Key</label>
+                  <input type="text" id="cfgBlanksKeyRaw" placeholder="1:since, 2:were, 3:when"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono" />
+                </div>
+              </div>
+
+              <div class="bg-slate-50 p-3.5 rounded-lg border border-slate-200 space-y-2">
+                <label class="block text-xs font-bold uppercase text-slate-700">Section C: Listening Comprehension Audio URL (2-Play Max)</label>
+                <input type="url" id="cfgAudioUrl" placeholder="https://example.com/listening-track.mp3"
+                  class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs" />
+              </div>
+
+              <div class="bg-emerald-50/60 p-3.5 rounded-lg border border-emerald-200 space-y-2">
+                <label class="block text-xs font-bold uppercase text-emerald-900">Google Apps Script Web App Endpoint URL</label>
+                <input type="url" id="cfgGoogleScriptUrl" placeholder="https://script.google.com/macros/s/.../exec"
+                  class="w-full px-3 py-2 rounded-lg border border-emerald-300 text-xs font-mono" />
+                <p class="text-[11px] text-emerald-800">
+                  Submissions are buffered in RAM and asynchronously flushed in batches to prevent Google Sheet 429 quota locks.
+                </p>
+              </div>
+
+              <button type="submit"
+                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow text-sm transition">
+                Save Paper &amp; Grading Configuration
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL FOR VIEWING STUDENT WRITTEN ESSAY & RESPONSES -->
+  <div id="essayInspectorModal" class="hidden fixed inset-0 z-50 bg-slate-900/75 flex items-center justify-center p-6">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 id="inspectorTitle" class="font-bold text-base text-slate-900">Student Written Responses</h3>
+        <button id="btnCloseInspector" class="text-xs font-bold text-slate-500 hover:text-slate-900">Close &#10005;</button>
+      </div>
+      <div id="inspectorBody" class="flex-1 overflow-y-auto space-y-4 text-xs whitespace-pre-wrap font-mono bg-slate-50 p-4 rounded-lg border"></div>
+    </div>
+  </div>
+
+  <script>
+    const TOKEN_KEY = 'eng_portal_teacher_token_v1';
+    let teacherToken = sessionStorage.getItem(TOKEN_KEY) || '';
+    let cachedStudents = [];
+    let pollInterval = null;
+
+    // Login Handler
+    document.getElementById('teacherLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('teacherLoginError');
+      errEl.classList.add('hidden');
+
+      const userId = document.getElementById('tUserId').value.trim();
+      const password = document.getElementById('tPassword').value;
+
+      try {
+        const res = await fetch('/api/teacher/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          errEl.textContent = data.error || 'Invalid credentials';
+          errEl.classList.remove('hidden');
+          return;
+        }
+        teacherToken = data.token;
+        sessionStorage.setItem(TOKEN_KEY, teacherToken);
+        enterConsole();
+      } catch (err) {
+        errEl.textContent = 'Connection error.';
+        errEl.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('btnLogoutTeacher').addEventListener('click', () => {
+      sessionStorage.removeItem(TOKEN_KEY);
+      location.reload();
+    });
+
+    function enterConsole() {
+      document.getElementById('teacherLoginScreen').classList.add('hidden');
+      document.getElementById('teacherMainConsole').classList.remove('hidden');
+      fetchDashboardData(true);
+      pollInterval = setInterval(() => fetchDashboardData(false), 4000);
+    }
+
+    if (teacherToken) {
+      enterConsole();
+    }
+
+    // Navigation Tabs
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => {
+          b.className = 'nav-btn bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-lg';
+        });
+        btn.className = 'nav-btn bg-indigo-600 text-white text-xs font-bold px-3.5 py-2 rounded-lg';
+
+        const target = btn.dataset.nav;
+        document.getElementById('proctorTab').classList.toggle('hidden', target !== 'proctorTab');
+        document.getElementById('builderTab').classList.toggle('hidden', target !== 'builderTab');
+      });
+    });
+
+    // Fetch Live Dashboard Data
+    async function fetchDashboardData(populateForm = false) {
+      try {
+        const res = await fetch('/api/teacher/dashboard', {
+          headers: { 'Authorization': `Bearer ${teacherToken}` }
+        });
+        if (res.status === 401) {
+          sessionStorage.removeItem(TOKEN_KEY);
+          location.reload();
+          return;
+        }
+        const data = await res.json();
+        cachedStudents = data.students || [];
+
+        renderKpisAndSync(cachedStudents, data.syncStats);
+        renderStudentTable();
+
+        if (populateForm && data.examConfig) {
+          populateBuilderForm(data.examConfig);
+        }
+      } catch (_) {}
+    }
+
+    function renderKpisAndSync(students, syncStats) {
+      const total = students.length;
+      const active = students.filter(s => s.status === 'ACTIVE').length;
+      const locked = students.filter(s => s.status === 'LOCKED').length;
+      const submitted = students.filter(s => s.status === 'SUBMITTED').length;
+
+      document.getElementById('kpiTotal').textContent = total;
+      document.getElementById('kpiActive').textContent = active;
+      document.getElementById('kpiLocked').textContent = locked;
+      document.getElementById('kpiSubmitted').textContent = submitted;
+      document.getElementById('kpiSynced').textContent = `${syncStats.totalSynced} synced`;
+      document.getElementById('kpiQueuePending').textContent = `(${syncStats.pendingQueueCount} queued)`;
+
+      const banner = document.getElementById('syncStatusBanner');
+      const lastTime = syncStats.lastSyncTime ? new Date(syncStats.lastSyncTime).toLocaleTimeString() : 'Never';
+      const errPart = syncStats.lastSyncError ? ` | Last Error: ${syncStats.lastSyncError}` : '';
+      banner.textContent = `Last Google Sheet Batch Sync: ${lastTime}${errPart}`;
+    }
+
+    function renderStudentTable() {
+      const filter = document.getElementById('studentSearchFilter').value.trim().toLowerCase();
+      const tbody = document.getElementById('candidateTableBody');
+      tbody.innerHTML = '';
+
+      const filtered = cachedStudents.filter(s => {
+        if (!filter) return true;
+        return (
+          s.admissionNo.toLowerCase().includes(filter) ||
+          s.fullName.toLowerCase().includes(filter) ||
+          s.grade.toLowerCase().includes(filter)
+        );
+      });
+
+      // Sort LOCKED students to the top so teacher sees them immediately
+      filtered.sort((a, b) => {
+        if (a.status === 'LOCKED' && b.status !== 'LOCKED') return -1;
+        if (b.status === 'LOCKED' && a.status !== 'LOCKED') return 1;
+        return a.admissionNo.localeCompare(b.admissionNo);
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-400">No students matching filter.</td></tr>`;
+        return;
+      }
+
+      filtered.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.className = s.status === 'LOCKED' ? 'bg-red-50/80 hover:bg-red-100/60' : 'hover:bg-slate-50';
+
+        let statusBadge = '';
+        if (s.status === 'LOCKED') {
+          statusBadge = `<span class="px-2 py-1 rounded-full bg-red-600 text-white font-extrabold text-[10px]">LOCKED / SUSPENDED</span>`;
+        } else if (s.status === 'SUBMITTED') {
+          statusBadge = `<span class="px-2 py-1 rounded-full bg-indigo-100 text-indigo-800 font-bold text-[10px]">SUBMITTED ${s.syncedToSheet ? '✓' : '⏳'}</span>`;
+        } else {
+          statusBadge = `<span class="px-2 py-1 rounded-full ${s.isOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'} font-bold text-[10px]">${s.isOnline ? 'ONLINE' : 'IDLE'}</span>`;
+        }
+
+        const scoreText = s.scoreSummary
+          ? `${s.scoreSummary.totalAutoScore} / ${s.scoreSummary.maxAutoScore}`
+          : '-';
+
+        const violationTime = s.lastViolationTime ? new Date(s.lastViolationTime).toLocaleTimeString() : '';
+
+        tr.innerHTML = `
+          <td class="p-3 font-mono font-bold text-slate-900">${escapeHtml(s.admissionNo)}</td>
+          <td class="p-3 font-semibold text-slate-800">${escapeHtml(s.fullName)}</td>
+          <td class="p-3 text-slate-600">${escapeHtml(s.grade)}</td>
+          <td class="p-3">${statusBadge}</td>
+          <td class="p-3 text-slate-600">
+            <div>MCQs: <strong>${s.answeredMcqCount}</strong></div>
+            <div class="text-[10px] text-slate-400">Audio: ${s.audioPlaysUsed}/2 plays</div>
+          </td>
+          <td class="p-3">
+            <span class="font-extrabold ${s.violations > 0 ? 'text-red-600' : 'text-slate-400'}">${s.violations}</span>
+            ${violationTime ? `<div class="text-[10px] text-red-500">at ${violationTime}</div>` : ''}
+          </td>
+          <td class="p-3 font-mono font-bold text-indigo-700">${scoreText}</td>
+          <td class="p-3 text-right space-x-1.5 whitespace-nowrap">
+            ${s.status === 'LOCKED' ? `
+              <button onclick="unlockStudent('${escapeHtml(s.admissionNo)}')"
+                class="bg-red-600 hover:bg-red-700 text-white font-bold px-2.5 py-1 rounded shadow text-[11px]">
+                Unlock
+              </button>
+            ` : ''}
+            <button onclick="warnStudent('${escapeHtml(s.admissionNo)}')"
+              class="bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-2.5 py-1 rounded text-[11px]">
+              Warn
+            </button>
+            <button onclick="inspectWritten('${escapeHtml(s.admissionNo)}')"
+              class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded text-[11px]">
+              View Answers
+            </button>
+            <button onclick="resetDeviceLock('${escapeHtml(s.admissionNo)}')" title="Allow student to log back in if browser closed"
+              class="text-slate-400 hover:text-indigo-600 font-bold px-1.5 py-1 text-[11px]">
+              Reset Lock
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('studentSearchFilter').addEventListener('input', renderStudentTable);
+
+    // Proctor Actions
+    window.unlockStudent = async function(admissionNo) {
+      await fetch('/api/teacher/unlock', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({ admissionNo })
+      });
+      fetchDashboardData(false);
+    };
+
+    document.getElementById('btnUnlockAll').addEventListener('click', () => window.unlockStudent('ALL'));
+
+    window.warnStudent = async function(admissionNo) {
+      const msg = prompt(`Send live alert toast to ${admissionNo}:`, 'Warning 1: Return to your exam tab immediately.');
+      if (!msg) return;
+      await fetch('/api/teacher/warn', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({ admissionNo, message: msg })
+      });
+    };
+
+    document.getElementById('btnBroadcastWarn').addEventListener('click', async () => {
+      const inp = document.getElementById('broadcastMessageInput');
+      const msg = inp.value.trim();
+      if (!msg) return;
+      await fetch('/api/teacher/warn', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({ admissionNo: 'ALL', message: msg })
+      });
+      inp.value = '';
+      alert('Broadcast warning sent to all active students.');
+    });
+
+    window.resetDeviceLock = async function(admissionNo) {
+      if (!confirm(`Clear active device lock for ${admissionNo} so they can re-login on a new device/tab?`)) return;
+      await fetch('/api/teacher/reset-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({ admissionNo, fullReset: false })
+      });
+      fetchDashboardData(false);
+    };
+
+    window.inspectWritten = function(admissionNo) {
+      const st = cachedStudents.find(x => x.admissionNo === admissionNo);
+      if (!st) return;
+      document.getElementById('inspectorTitle').textContent = `${st.fullName} (${st.admissionNo}) - Written Responses`;
+      const blanksStr = JSON.stringify(st.answers?.blanks || {}, null, 2);
+      document.getElementById('inspectorBody').textContent =
+        `--- FILL IN THE BLANKS ---\n${blanksStr}\n\n--- DESCRIPTIVE / ESSAY ---\n${st.answers?.essay || '(Empty)'}\n\n--- LISTENING COMPREHENSION ---\n${st.answers?.listeningResponse || '(Empty)'}`;
+      document.getElementById('essayInspectorModal').classList.remove('hidden');
+    };
+
+    document.getElementById('btnCloseInspector').addEventListener('click', () => {
+      document.getElementById('essayInspectorModal').classList.add('hidden');
+    });
+
+    // Google Sheet Sync Triggers
+    document.getElementById('btnTriggerSheetSync').addEventListener('click', async () => {
+      await fetch('/api/teacher/sync-now', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({ forceAllSubmitted: false })
+      });
+      fetchDashboardData(false);
+    });
+
+    document.getElementById('btnForceResyncAll').addEventListener('click', async () => {
+      if (!confirm('Re-queue and push ALL submitted student results to Google Sheets?')) return;
+      await fetch('/api/teacher/sync-now', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify({ forceAllSubmitted: true })
+      });
+      fetchDashboardData(false);
+    });
+
+    // Populate & Save Paper Builder Config
+    function populateBuilderForm(cfg) {
+      document.getElementById('cfgTitle').value = cfg.title || '';
+      document.getElementById('cfgDuration').value = cfg.durationMinutes || 60;
+      document.getElementById('cfgPaperType').value = cfg.paperType || 'text';
+      document.getElementById('cfgPdfUrl').value = cfg.pdfUrl || '';
+      document.getElementById('cfgPaperContent').value = cfg.paperContent || '';
+      document.getElementById('cfgMcqCount').value = cfg.mcqCount || 0;
+      document.getElementById('cfgMarkingScheme').value = cfg.markingScheme || 'standard';
+      document.getElementById('cfgNegativeMark').value = cfg.negativeMark ?? -0.25;
+      document.getElementById('cfgBlanksCount').value = cfg.fillInBlanksCount || 0;
+      document.getElementById('cfgAudioUrl').value = cfg.audioUrl || '';
+      document.getElementById('cfgGoogleScriptUrl').value = cfg.googleScriptUrl || '';
+
+      const keyEntries = Object.entries(cfg.answerKey || {})
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([k, v]) => `${k}:${v}`)
+        .join(', ');
+      document.getElementById('cfgBulkKeyRaw').value = keyEntries;
+      document.getElementById('parsedKeyCounter').textContent = `${Object.keys(cfg.answerKey || {}).length} keys active`;
+
+      const blankEntries = Object.entries(cfg.fillInKeys || {})
+        .map(([k, v]) => `${k}:${v}`)
+        .join(', ');
+      document.getElementById('cfgBlanksKeyRaw').value = blankEntries;
+    }
+
+    document.getElementById('paperConfigForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        title: document.getElementById('cfgTitle').value,
+        durationMinutes: Number(document.getElementById('cfgDuration').value),
+        paperType: document.getElementById('cfgPaperType').value,
+        pdfUrl: document.getElementById('cfgPdfUrl').value,
+        paperContent: document.getElementById('cfgPaperContent').value,
+        mcqCount: Number(document.getElementById('cfgMcqCount').value),
+        markingScheme: document.getElementById('cfgMarkingScheme').value,
+        negativeMark: Number(document.getElementById('cfgNegativeMark').value),
+        bulkKeyRaw: document.getElementById('cfgBulkKeyRaw').value,
+        fillInBlanksCount: Number(document.getElementById('cfgBlanksCount').value),
+        fillInKeysRaw: document.getElementById('cfgBlanksKeyRaw').value,
+        audioUrl: document.getElementById('cfgAudioUrl').value,
+        googleScriptUrl: document.getElementById('cfgGoogleScriptUrl').value
+      };
+
+      const res = await fetch('/api/teacher/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${teacherToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        populateBuilderForm(data.examConfig);
+        const badge = document.getElementById('saveConfigBadge');
+        badge.classList.remove('hidden');
+        setTimeout(() => badge.classList.add('hidden'), 4000);
+      }
+    });
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+  </script>
+</body>
+</html>

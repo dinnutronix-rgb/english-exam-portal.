@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Online English Language Assessment Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Strict anti-copy and custom scrollbar styling */
+    .no-select {
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+    @media print {
+      body { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- LIVE TEACHER WARNING TOAST BANNER -->
+  <div id="warningBannerContainer" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-2xl px-4 space-y-2 pointer-events-none"></div>
+
+  <!-- AUTOMATIC LOCKDOWN SUSPENSION MODAL -->
+  <div id="lockdownModal" class="hidden fixed inset-0 z-50 bg-red-950/95 backdrop-blur-md flex items-center justify-center p-6">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-8 shadow-2xl border-4 border-red-600 text-center">
+      <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+        </svg>
+      </div>
+      <h2 class="text-2xl font-extrabold text-red-700 mb-2">Exam Suspended: Unauthorized tab/screen switch detected.</h2>
+      <p class="text-slate-600 text-sm mb-6">
+        Your digital answer sheet has been frozen and this incident has been logged on the Proctor Dashboard.
+        Do not close or refresh this window. Raise your hand or wait for your teacher to unlock your session.
+      </p>
+      <div class="bg-red-50 rounded-lg p-4 text-left text-xs text-red-900 space-y-1 mb-6 border border-red-200">
+        <div><span class="font-bold">Candidate:</span> <span id="lockCandidateName">-</span></div>
+        <div><span class="font-bold">Admission No:</span> <span id="lockAdmissionNo">-</span></div>
+        <div><span class="font-bold">Total Violations Logged:</span> <span id="lockViolationCount" class="font-extrabold text-red-600">1</span></div>
+      </div>
+      <div class="flex items-center justify-center space-x-2 text-sm text-slate-500 font-medium">
+        <span class="w-3 h-3 bg-amber-500 rounded-full animate-ping"></span>
+        <span>Awaiting Teacher Unlock Signal...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 1: PASSWORDLESS STUDENT GATEWAY -->
+  <div id="loginGateway" class="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full p-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">Student Gateway</span>
+          <h1 class="text-2xl font-extrabold text-slate-900 mt-2" id="gatewayExamTitle">English Assessment Portal</h1>
+        </div>
+        <a href="/teacher.html" class="text-xs text-slate-400 hover:text-indigo-600 underline">Teacher Console</a>
+      </div>
+
+      <div id="loginErrorBox" class="hidden mb-4 p-3.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-medium"></div>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Full Name</label>
+          <input type="text" id="inputFullName" required placeholder="e.g., Jane Doe"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm select-text" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Admission Number (Unique ID)</label>
+          <input type="text" id="inputAdmissionNo" required placeholder="e.g., ADM2026-104"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 uppercase focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm font-mono select-text" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Grade</label>
+          <select id="inputGrade" required
+            class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm bg-white">
+            <option value="" disabled selected>Select your grade...</option>
+            <option value="Grade 6">Grade 6</option>
+            <option value="Grade 7">Grade 7</option>
+            <option value="Grade 8">Grade 8</option>
+            <option value="Grade 9">Grade 9</option>
+            <option value="Grade 11">Grade 11</option>
+          </select>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 space-y-1">
+          <div class="font-bold">Strict Proctoring Rules:</div>
+          <ul class="list-disc pl-4 space-y-0.5">
+            <li>Switching tabs, minimizing the window, or opening other apps will immediately lock your exam.</li>
+            <li>Listening comprehension audio can be played a maximum of <strong>2 times</strong>.</li>
+            <li>Your answers auto-save locally every 5 seconds.</li>
+          </ul>
+        </div>
+
+        <button type="submit" id="btnStartExam"
+          class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow transition text-sm">
+          Enter Examination Room
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- VIEW 2: SPLIT-SCREEN EXAMINATION INTERFACE -->
+  <div id="examWorkspace" class="hidden flex-1 flex flex-col h-full overflow-hidden">
+    <!-- TOP STATUS HEADER -->
+    <header class="bg-slate-900 text-white px-4 py-2.5 flex items-center justify-between shadow-md shrink-0">
+      <div class="flex items-center space-x-4">
+        <div>
+          <h2 id="headerExamTitle" class="font-bold text-sm md:text-base truncate max-w-xs md:max-w-md">English Assessment</h2>
+          <div class="text-xs text-slate-400 flex items-center space-x-2">
+            <span id="headerStudentInfo">-</span>
+            <span>&bull;</span>
+            <span id="headerMarkingInfo" class="text-emerald-400 font-medium">Standard Marking</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <div class="hidden sm:flex items-center space-x-1.5 text-xs bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
+          <span id="syncDot" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span id="syncStatusText" class="text-slate-300">Auto-saved</span>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 px-3 py-1 rounded-lg text-center">
+          <span class="text-[10px] uppercase tracking-wider text-slate-400 block">Time Left</span>
+          <span id="examTimer" class="font-mono font-bold text-sm text-amber-400">60:00</span>
+        </div>
+
+        <button id="btnSubmitExam"
+          class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs md:text-sm px-4 py-2 rounded-lg shadow transition">
+          Submit Exam
+        </button>
+      </div>
+    </header>
+
+    <!-- RESPONSIVE 50/50 SPLIT VIEWPORT -->
+    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <!-- LEFT SIDE (50%): QUESTION PAPER VIEWPORT -->
+      <section class="w-full md:w-1/2 h-1/2 md:h-full border-b md:border-b-0 md:border-r border-slate-300 bg-white flex flex-col overflow-hidden no-select">
+        <div class="bg-slate-100 px-4 py-2 border-b border-slate-200 flex items-center justify-between shrink-0">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Question Paper Viewport</span>
+          <span class="text-[11px] text-slate-500">Read-Only &bull; Independent Scroll</span>
+        </div>
+
+        <div id="questionPaperTextContainer" class="flex-1 p-6 overflow-y-auto whitespace-pre-wrap font-serif text-sm md:text-base leading-relaxed text-slate-800"></div>
+
+        <iframe id="questionPaperPdfFrame" class="hidden flex-1 w-full h-full border-0" title="Question Paper PDF"></iframe>
+      </section>
+
+      <!-- RIGHT SIDE (50%): DYNAMIC DIGITAL ANSWER SHEET -->
+      <section class="w-full md:w-1/2 h-1/2 md:h-full bg-slate-50 flex flex-col overflow-hidden">
+        <!-- Section Switcher Tabs -->
+        <div class="bg-white px-4 pt-2 border-b border-slate-200 flex space-x-2 shrink-0 overflow-x-auto">
+          <button data-tab="secA" class="tab-btn border-b-2 border-indigo-600 text-indigo-600 font-bold text-xs px-3 py-2">
+            Section A: MCQs (<span id="mcqProgressBadge">0/0</span>)
+          </button>
+          <button data-tab="secB" class="tab-btn border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold text-xs px-3 py-2">
+            Section B: Blanks &amp; Essay
+          </button>
+          <button data-tab="secC" id="tabBtnSecC" class="tab-btn border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold text-xs px-3 py-2">
+            Section C: Listening (<span id="audioPlaysTabBadge">2/2</span>)
+          </button>
+        </div>
+
+        <!-- Answer Sheet Scrollable Body -->
+        <div class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6" id="answerSheetBody">
+
+          <!-- SECTION A: RAPID MCQ BUBBLE GRID (UP TO 300 MCQs) -->
+          <div id="panelSecA" class="space-y-4">
+            <div class="flex items-center justify-between bg-indigo-50 border border-indigo-100 rounded-lg p-3">
+              <div class="text-xs text-indigo-900">
+                Click an option (A, B, C, D) to record your response. Click <strong>Clear</strong> to unselect.
+              </div>
+              <span id="mcqAnsweredCounter" class="text-xs font-bold text-indigo-700">0 Answered</span>
+            </div>
+
+            <div id="mcqGridContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
+          </div>
+
+          <!-- SECTION B: FILL IN THE BLANKS & ESSAY -->
+          <div id="panelSecB" class="hidden space-y-6 select-text">
+            <div id="blanksSectionWrapper" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+              <h3 class="text-sm font-bold text-slate-800 border-b pb-2">Part 1: Fill in the Blanks</h3>
+              <div id="blanksInputsContainer" class="space-y-2.5"></div>
+            </div>
+
+            <div id="essaySectionWrapper" class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+              <div class="flex items-center justify-between border-b pb-2">
+                <h3 class="text-sm font-bold text-slate-800">Part 2: Descriptive / Essay Writing</h3>
+                <span id="essayWordCount" class="text-xs font-mono text-slate-500">0 words</span>
+              </div>
+              <textarea id="essayTextarea" rows="12" placeholder="Type your descriptive or essay response here..."
+                class="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm leading-relaxed select-text"></textarea>
+            </div>
+          </div>
+
+          <!-- SECTION C: LISTENING COMPREHENSION MODULE -->
+          <div id="panelSecC" class="hidden space-y-6 select-text">
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-sm font-bold text-slate-900">Listening Comprehension Audio Track</h3>
+                  <p class="text-xs text-slate-500">Once started, the audio plays through completely. Refreshing does not reset your counter.</p>
+                </div>
+                <span id="listeningPlaysBadge" class="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800">
+                  Plays Remaining: 2/2
+                </span>
+              </div>
+
+              <div class="flex items-center space-x-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <button id="btnPlayListeningAudio"
+                  class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 text-white font-bold text-xs rounded-lg shadow transition flex items-center space-x-2">
+                  <span>&#9654; Play Audio Track</span>
+                </button>
+                <div class="flex-1">
+                  <div id="audioPlaybackStatus" class="text-xs font-medium text-slate-600">Ready to play</div>
+                  <div class="w-full bg-slate-200 h-2 rounded-full mt-1.5 overflow-hidden">
+                    <div id="audioProgressBar" class="bg-indigo-600 h-full w-0 transition-all duration-300"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hidden Controlled HTML5 Audio Element -->
+              <audio id="controlledAudioElement" preload="metadata" class="hidden"></audio>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+              <h3 class="text-sm font-bold text-slate-800 border-b pb-2">Listening Comprehension Response Notes / Answers</h3>
+              <textarea id="listeningTextarea" rows="8" placeholder="Enter your listening section answers here..."
+                class="w-full p-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-600 focus:outline-none text-sm leading-relaxed select-text"></textarea>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- VIEW 3: INSTANT SUBMISSION & SCORE SUMMARY MODAL -->
+  <div id="resultView" class="hidden flex-1 flex items-center justify-center p-6 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full p-8 text-center space-y-6">
+      <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+        </svg>
+      </div>
+
+      <div>
+        <span class="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full">Submission Recorded</span>
+        <h2 class="text-2xl font-extrabold text-slate-900 mt-2">Assessment Complete</h2>
+        <p class="text-xs text-slate-500 mt-1" id="resultCandidateMeta">-</p>
+      </div>
+
+      <div class="bg-slate-50 rounded-xl p-5 border border-slate-200 grid grid-cols-2 gap-4 text-left">
+        <div class="col-span-2 border-b pb-3 flex items-center justify-between">
+          <span class="text-sm font-bold text-slate-600">Total Auto-Graded Score</span>
+          <span id="resTotalAutoScore" class="text-2xl font-extrabold text-indigo-600">0 / 0</span>
+        </div>
+        <div>
+          <span class="text-xs text-slate-500 block">Section A (MCQ Score)</span>
+          <span id="resMcqScore" class="text-base font-bold text-slate-800">0</span>
+        </div>
+        <div>
+          <span class="text-xs text-slate-500 block">MCQ Breakdown</span>
+          <span id="resMcqBreakdown" class="text-xs font-semibold text-slate-700">0 Correct, 0 Wrong, 0 Blank</span>
+        </div>
+        <div>
+          <span class="text-xs text-slate-500 block">Fill-in-the-Blanks Score</span>
+          <span id="resBlanksScore" class="text-base font-bold text-slate-800">0 / 0</span>
+        </div>
+        <div>
+          <span class="text-xs text-slate-500 block">Descriptive / Listening</span>
+          <span class="text-xs font-semibold text-amber-700">Submitted for Teacher Review</span>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Master answer keys remain strictly concealed per examination security policy. You may now safely close this window.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // STUDENT PORTAL STATE & STORAGE ENGINE
+    // =========================================================================
+    const STORAGE_KEY_SESSION = 'eng_portal_student_session_v1';
+    const STORAGE_KEY_ANSWERS = 'eng_portal_student_answers_v1';
+    const STORAGE_KEY_AUDIO = 'eng_portal_audio_plays_v1';
+
+    let examConfig = null;
+    let studentSession = null;
+    let examActive = false;
+    let isLocked = false;
+    let heartbeatTimer = null;
+    let localSaveTimer = null;
+    let countdownTimer = null;
+
+    let answers = {
+      mcq: {},
+      blanks: {},
+      essay: '',
+      listeningResponse: ''
+    };
+
+    // Load Exam Config on Boot
+    async function fetchExamConfig() {
+      const res = await fetch('/api/student/config');
+      examConfig = await res.json();
+      document.getElementById('gatewayExamTitle').textContent = examConfig.title;
+      document.getElementById('headerExamTitle').textContent = examConfig.title;
+
+      const schemeLabel = examConfig.markingScheme === 'negative'
+        ? `Negative Marking (+1 / ${examConfig.negativeMark})`
+        : 'Standard Marking (+1 / 0)';
+      document.getElementById('headerMarkingInfo').textContent = schemeLabel;
+    }
+
+    fetchExamConfig();
+
+    // =========================================================================
+    // LOGIN & SESSION RESTORATION
+    // =========================================================================
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errBox = document.getElementById('loginErrorBox');
+      errBox.classList.add('hidden');
+
+      const fullName = document.getElementById('inputFullName').value.trim();
+      const admissionNo = document.getElementById('inputAdmissionNo').value.trim().toUpperCase();
+      const grade = document.getElementById('inputGrade').value;
+
+      // Retrieve existing local token if reconnecting from same browser
+      let savedSession = {};
+      try {
+        savedSession = JSON.parse(localStorage.getItem(STORAGE_KEY_SESSION) || '{}');
+      } catch (_) {}
+
+      const sessionToken = (savedSession.admissionNo === admissionNo && savedSession.sessionToken)
+        ? savedSession.sessionToken
+        : `${admissionNo}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      try {
+        const res = await fetch('/api/student/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullName, admissionNo, grade, sessionToken })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (data.alreadySubmitted && data.scoreSummary) {
+            renderFinalResult({ fullName, admissionNo, grade }, data.scoreSummary);
+            return;
+          }
+          errBox.textContent = data.error || 'Unable to log in.';
+          errBox.classList.remove('hidden');
+          return;
+        }
+
+        studentSession = data.student;
+        studentSession.sessionToken = sessionToken;
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(studentSession));
+
+        // Merge local saved answers with server answers (local takes precedence if non-empty)
+        let localSaved = {};
+        try {
+          const rawAns = localStorage.getItem(`${STORAGE_KEY_ANSWERS}_${admissionNo}`);
+          if (rawAns) localSaved = JSON.parse(rawAns);
+        } catch (_) {}
+
+        answers = {
+          mcq: { ...(studentSession.answers?.mcq || {}), ...(localSaved.mcq || {}) },
+          blanks: { ...(studentSession.answers?.blanks || {}), ...(localSaved.blanks || {}) },
+          essay: localSaved.essay || studentSession.answers?.essay || '',
+          listeningResponse: localSaved.listeningResponse || studentSession.answers?.listeningResponse || ''
+        };
+
+        // Reconcile audio play counter with local storage to prevent refresh bypass
+        const localPlays = parseInt(localStorage.getItem(`${STORAGE_KEY_AUDIO}_${admissionNo}`) || '0', 10);
+        studentSession.audioPlaysUsed = Math.max(studentSession.audioPlaysUsed || 0, localPlays);
+        localStorage.setItem(`${STORAGE_KEY_AUDIO}_${admissionNo}`, String(studentSession.audioPlaysUsed));
+
+        initializeExamUI();
+      } catch (err) {
+        errBox.textContent = 'Network error connecting to exam server. Please try again.';
+        errBox.classList.remove('hidden');
+      }
+    });
+
+    // =========================================================================
+    // INITIALIZE SPLIT-SCREEN EXAM WORKSPACE
+    // =========================================================================
+    async function initializeExamUI() {
+      await fetchExamConfig();
+
+      document.getElementById('loginGateway').classList.add('hidden');
+      document.getElementById('examWorkspace').classList.remove('hidden');
+
+      document.getElementById('headerStudentInfo').textContent =
+        `${studentSession.fullName} (${studentSession.admissionNo} - ${studentSession.grade})`;
+
+      // Render Left Pane: Paper Text or PDF
+      const textContainer = document.getElementById('questionPaperTextContainer');
+      const pdfFrame = document.getElementById('questionPaperPdfFrame');
+
+      if (examConfig.paperType === 'pdf' && examConfig.pdfUrl) {
+        textContainer.classList.add('hidden');
+        pdfFrame.classList.remove('hidden');
+        pdfFrame.src = examConfig.pdfUrl;
+      } else {
+        pdfFrame.classList.add('hidden');
+        textContainer.classList.remove('hidden');
+        textContainer.textContent = examConfig.paperContent || 'No question paper text uploaded yet.';
+      }
+
+      buildMcqGrid(examConfig.mcqCount || 0);
+      buildSectionBInputs(examConfig.fillInBlanksCount || 0, examConfig.essayEnabled);
+      setupAudioPlayer();
+      startTimersAndSync();
+      enableProctoringListeners();
+
+      if (studentSession.status === 'LOCKED') {
+        showLockdownOverlay(studentSession.violations);
+      }
+    }
+
+    // Build up to 300 MCQs with instant change & clear buttons
+    function buildMcqGrid(count) {
+      const container = document.getElementById('mcqGridContainer');
+      container.innerHTML = '';
+
+      for (let i = 1; i <= count; i++) {
+        const qKey = String(i);
+        const currentVal = answers.mcq[qKey] || '';
+
+        const card = document.createElement('div');
+        card.className = 'bg-white border border-slate-200 rounded-lg p-2.5 flex items-center justify-between shadow-sm';
+
+        const qLabel = document.createElement('span');
+        qLabel.className = 'font-mono font-bold text-xs text-slate-700 w-9';
+        qLabel.textContent = `Q${i}.`;
+
+        const optsWrapper = document.createElement('div');
+        optsWrapper.className = 'flex items-center space-x-1.5';
+
+        ['A', 'B', 'C', 'D'].forEach(opt => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.dataset.q = qKey;
+          btn.dataset.opt = opt;
+          btn.textContent = opt;
+          btn.className = getMcqBtnClasses(currentVal === opt);
+          btn.addEventListener('click', () => {
+            if (isLocked) return;
+            answers.mcq[qKey] = opt;
+            refreshMcqRow(card, qKey);
+            updateMcqProgress();
+            saveToLocalStorage();
+          });
+          optsWrapper.appendChild(btn);
+        });
+
+        const clearBtn = document.createElement('button');
+        clearBtn.type = 'button';
+        clearBtn.textContent = '×';
+        clearBtn.title = 'Clear Selection';
+        clearBtn.className = 'text-xs font-bold text-slate-400 hover:text-red-600 px-1.5 py-0.5 rounded';
+        clearBtn.addEventListener('click', () => {
+          if (isLocked) return;
+          delete answers.mcq[qKey];
+          refreshMcqRow(card, qKey);
+          updateMcqProgress();
+          saveToLocalStorage();
+        });
+
+        card.appendChild(qLabel);
+        card.appendChild(optsWrapper);
+        card.appendChild(clearBtn);
+        container.appendChild(card);
+      }
+      updateMcqProgress();
+    }
+
+    function getMcqBtnClasses(isSelected) {
+      return isSelected
+        ? 'w-7 h-7 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm transition'
+        : 'w-7 h-7 rounded-full text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition';
+    }
+
+    function refreshMcqRow(cardElement, qKey) {
+      const selected = answers.mcq[qKey] || '';
+      const buttons = cardElement.querySelectorAll('button[data-opt]');
+      buttons.forEach(btn => {
+        btn.className = getMcqBtnClasses(btn.dataset.opt === selected);
+      });
+    }
+
+    function updateMcqProgress() {
+      const total = examConfig.mcqCount || 0;
+      const answered = Object.keys(answers.mcq).filter(k => answers.mcq[k]).length;
+      document.getElementById('mcqProgressBadge').textContent = `${answered}/${total}`;
+      document.getElementById('mcqAnsweredCounter').textContent = `${answered} of ${total} Answered`;
+    }
+
+    // Build Section B: Blanks & Essay
+    function buildSectionBInputs(blanksCount, essayEnabled) {
+      const blanksContainer = document.getElementById('blanksInputsContainer');
+      blanksContainer.innerHTML = '';
+
+      if (blanksCount <= 0) {
+        document.getElementById('blanksSectionWrapper').classList.add('hidden');
+      } else {
+        document.getElementById('blanksSectionWrapper').classList.remove('hidden');
+        for (let i = 1; i <= blanksCount; i++) {
+          const bKey = String(i);
+          const row = document.createElement('div');
+          row.className = 'flex items-center space-x-3';
+          row.innerHTML = `
+            <label class="text-xs font-mono font-bold text-slate-600 w-20">Blank #${i}:</label>
+            <input type="text" data-blank="${bKey}" placeholder="Enter answer for blank ${i}..."
+              class="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-600 focus:outline-none select-text" />
+          `;
+          const inp = row.querySelector('input');
+          inp.value = answers.blanks[bKey] || '';
+          inp.addEventListener('input', (e) => {
+            if (isLocked) return;
+            answers.blanks[bKey] = e.target.value;
+            saveToLocalStorage();
+          });
+          blanksContainer.appendChild(row);
+        }
+      }
+
+      const essayArea = document.getElementById('essayTextarea');
+      essayArea.value = answers.essay || '';
+      updateEssayWordCount();
+      essayArea.addEventListener('input', (e) => {
+        if (isLocked) return;
+        answers.essay = e.target.value;
+        updateEssayWordCount();
+        saveToLocalStorage();
+      });
+
+      const listeningArea = document.getElementById('listeningTextarea');
+      listeningArea.value = answers.listeningResponse || '';
+      listeningArea.addEventListener('input', (e) => {
+        if (isLocked) return;
+        answers.listeningResponse = e.target.value;
+        saveToLocalStorage();
+      });
+    }
+
+    function updateEssayWordCount() {
+      const text = (answers.essay || '').trim();
+      const words = text ? text.split(/\s+/).length : 0;
+      document.getElementById('essayWordCount').textContent = `${words} words`;
+    }
+
+    // Tab Navigation
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.className = 'tab-btn border-b-2 border-transparent text-slate-500 hover:text-slate-800 font-bold text-xs px-3 py-2';
+        });
+        btn.className = 'tab-btn border-b-2 border-indigo-600 text-indigo-600 font-bold text-xs px-3 py-2';
+
+        const target = btn.dataset.tab;
+        document.getElementById('panelSecA').classList.toggle('hidden', target !== 'secA');
+        document.getElementById('panelSecB').classList.toggle('hidden', target !== 'secB');
+        document.getElementById('panelSecC').classList.toggle('hidden', target !== 'secC');
+      });
+    });
+
+    // =========================================================================
+    // LISTENING COMPREHENSION 2-PLAY HARD CAP ENGINE
+    // =========================================================================
+    function setupAudioPlayer() {
+      const audioEl = document.getElementById('controlledAudioElement');
+      const playBtn = document.getElementById('btnPlayListeningAudio');
+      const statusText = document.getElementById('audioPlaybackStatus');
+      const progressBar = document.getElementById('audioProgressBar');
+
+      if (!examConfig.listeningEnabled || !examConfig.audioUrl) {
+        playBtn.disabled = true;
+        statusText.textContent = 'No audio track configured for this assessment.';
+        return;
+      }
+
+      audioEl.src = examConfig.audioUrl;
+      updateAudioBadges(studentSession.audioPlaysUsed || 0);
+
+      playBtn.addEventListener('click', async () => {
+        if (isLocked || !audioEl.paused) return;
+
+        playBtn.disabled = true;
+        statusText.textContent = 'Verifying play quota with server...';
+
+        try {
+          const res = await fetch('/api/student/audio-play', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ admissionNo: studentSession.admissionNo })
+          });
+          const data = await res.json();
+
+          if (!res.ok || !data.allowed) {
+            studentSession.audioPlaysUsed = 2;
+            localStorage.setItem(`${STORAGE_KEY_AUDIO}_${studentSession.admissionNo}`, '2');
+            updateAudioBadges(2);
+            statusText.textContent = data.error || 'Play limit reached (0/2 remaining).';
+            return;
+          }
+
+          studentSession.audioPlaysUsed = data.audioPlaysUsed;
+          localStorage.setItem(`${STORAGE_KEY_AUDIO}_${studentSession.admissionNo}`, String(data.audioPlaysUsed));
+          updateAudioBadges(data.audioPlaysUsed);
+
+          statusText.textContent = `Playing track (Attempt ${data.audioPlaysUsed} of 2)...`;
+          await audioEl.play();
+        } catch (err) {
+          statusText.textContent = 'Could not start audio playback. Check connection.';
+          updateAudioBadges(studentSession.audioPlaysUsed);
+        }
+      });
+
+      audioEl.addEventListener('timeupdate', () => {
+        if (audioEl.duration) {
+          const pct = Math.min(100, (audioEl.currentTime / audioEl.duration) * 100);
+          progressBar.style.width = `${pct}%`;
+        }
+      });
+
+      audioEl.addEventListener('ended', () => {
+        progressBar.style.width = '0%';
+        const remaining = Math.max(0, 2 - (studentSession.audioPlaysUsed || 0));
+        if (remaining > 0) {
+          playBtn.disabled = false;
+          statusText.textContent = `Track finished. You have ${remaining} play remaining.`;
+        } else {
+          playBtn.disabled = true;
+          statusText.textContent = 'Audio playback locked (0/2 plays remaining).';
+        }
+      });
+    }
+
+    function updateAudioBadges(used) {
+      const rem = Math.max(0, 2 - used);
+      const badge = document.getElementById('listeningPlaysBadge');
+      const tabBadge = document.getElementById('audioPlaysTabBadge');
+      const playBtn = document.getElementById('btnPlayListeningAudio');
+
+      tabBadge.textContent = `${rem}/2`;
+
+      if (rem === 0) {
+        badge.textContent = 'Plays Remaining: 0/2 (Locked)';
+        badge.className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-red-100 text-red-700';
+        playBtn.disabled = true;
+      } else if (rem === 1) {
+        badge.textContent = 'Plays Remaining: 1/2';
+        badge.className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800';
+        playBtn.disabled = false;
+      } else {
+        badge.textContent = 'Plays Remaining: 2/2';
+        badge.className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800';
+        playBtn.disabled = false;
+      }
+    }
+
+    // =========================================================================
+    // NON-CAMERA PROCTORING & AUTOMATIC LOCKDOWN ENGINE
+    // =========================================================================
+    function enableProctoringListeners() {
+      examActive = true;
+
+      // 1. Visibility change detection (Tab switch / minimize)
+      document.addEventListener('visibilitychange', () => {
+        if (!examActive) return;
+        if (document.hidden) {
+          triggerProctorLockdown('Tab Switch or Window Minimized (visibilitychange)');
+        }
+      });
+
+      // 2. Window blur detection (Clicking outside browser or opening external app)
+      window.addEventListener('blur', () => {
+        if (!examActive) return;
+        // Ignore blur if focus moved inside our own PDF iframe
+        if (document.activeElement && document.activeElement.tagName === 'IFRAME') return;
+        triggerProctorLockdown('Window Focus Lost / External Application Switch (window.blur)');
+      });
+
+      // 3. Disable Right Click Context Menu
+      document.addEventListener('contextmenu', (e) => {
+        if (examActive) e.preventDefault();
+      });
+
+      // 4. Disable Restricted Keyboard Shortcuts (Ctrl+C, Ctrl+V, Ctrl+P, F12)
+      document.addEventListener('keydown', (e) => {
+        if (!examActive) return;
+        const key = e.key.toLowerCase();
+        if (
+          e.key === 'F12' ||
+          ((e.ctrlKey || e.metaKey) && ['c', 'v', 'p', 'u', 's'].includes(key)) ||
+          (e.ctrlKey && e.shiftKey && ['i', 'j', 'c'].includes(key))
+        ) {
+          e.preventDefault();
+          showWarningToast('Security Alert: Copy, Paste, Print, and Inspector shortcuts are disabled.');
+        }
+      });
+    }
+
+    async function triggerProctorLockdown(reason) {
+      if (!examActive || isLocked) return;
+      isLocked = true;
+      showLockdownOverlay((studentSession.violations || 0) + 1);
+
+      try {
+        const res = await fetch('/api/student/lock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            admissionNo: studentSession.admissionNo,
+            reason
+          })
+        });
+        const data = await res.json();
+        if (data.violations) {
+          studentSession.violations = data.violations;
+          document.getElementById('lockViolationCount').textContent = data.violations;
+        }
+      } catch (_) {}
+    }
+
+    function showLockdownOverlay(violationCount) {
+      isLocked = true;
+      document.getElementById('lockCandidateName').textContent = studentSession.fullName;
+      document.getElementById('lockAdmissionNo').textContent = studentSession.admissionNo;
+      document.getElementById('lockViolationCount').textContent = violationCount;
+      document.getElementById('lockdownModal').classList.remove('hidden');
+
+      // Pause audio if playing
+      const audioEl = document.getElementById('controlledAudioElement');
+      if (audioEl && !audioEl.paused) audioEl.pause();
+    }
+
+    function hideLockdownOverlay() {
+      isLocked = false;
+      document.getElementById('lockdownModal').classList.add('hidden');
+    }
+
+    function showWarningToast(message) {
+      const container = document.getElementById('warningBannerContainer');
+      const banner = document.createElement('div');
+      banner.className = 'pointer-events-auto bg-amber-500 text-slate-950 px-5 py-3.5 rounded-xl shadow-2xl border-2 border-amber-300 flex items-center justify-between font-bold text-sm animate-bounce';
+      banner.innerHTML = `
+        <div class="flex items-center space-x-2.5">
+          <span class="text-lg">&#9888;</span>
+          <span>${escapeHtml(message)}</span>
+        </div>
+        <button class="ml-4 text-xs bg-slate-900 text-white px-2.5 py-1 rounded hover:bg-slate-800">Dismiss</button>
+      `;
+      banner.querySelector('button').addEventListener('click', () => banner.remove());
+      container.appendChild(banner);
+      setTimeout(() => { if (banner.parentNode) banner.remove(); }, 12000);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    // =========================================================================
+    // RESILIENCE: 5s LOCAL AUTO-SAVE & 10s SERVER HEARTBEAT
+    // =========================================================================
+    function saveToLocalStorage() {
+      if (!studentSession) return;
+      try {
+        localStorage.setItem(
+          `${STORAGE_KEY_ANSWERS}_${studentSession.admissionNo}`,
+          JSON.stringify(answers)
+        );
+        const syncText = document.getElementById('syncStatusText');
+        const syncDot = document.getElementById('syncDot');
+        syncText.textContent = 'Saved locally';
+        syncDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+      } catch (_) {}
+    }
+
+    async function sendServerHeartbeat() {
+      if (!examActive || !studentSession) return;
+      try {
+        const res = await fetch('/api/student/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            admissionNo: studentSession.admissionNo,
+            sessionToken: studentSession.sessionToken,
+            answers
+          })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        document.getElementById('syncStatusText').textContent = 'Synced with server';
+        document.getElementById('syncDot').className = 'w-2 h-2 rounded-full bg-emerald-400';
+
+        // Check lock/unlock transition from Teacher Console
+        if (data.status === 'LOCKED' && !isLocked) {
+          showLockdownOverlay(data.violations);
+        } else if (data.status === 'ACTIVE' && isLocked) {
+          hideLockdownOverlay();
+        }
+
+        // Display any new real-time teacher warnings
+        if (Array.isArray(data.newWarnings)) {
+          data.newWarnings.forEach(w => showWarningToast(w.message));
+        }
+      } catch (_) {
+        document.getElementById('syncStatusText').textContent = 'Offline (Local Save Active)';
+        document.getElementById('syncDot').className = 'w-2 h-2 rounded-full bg-amber-400';
+      }
+    }
+
+    function startTimersAndSync() {
+      // LocalStorage Auto-Save every 5 seconds
+      localSaveTimer = setInterval(saveToLocalStorage, 5000);
+
+      // Server Heartbeat every 8 seconds
+      heartbeatTimer = setInterval(sendServerHeartbeat, 8000);
+
+      // Countdown Timer
+      const durationSec = (examConfig.durationMinutes || 60) * 60;
+      const startMs = studentSession.startedAt ? new Date(studentSession.startedAt).getTime() : Date.now();
+
+      countdownTimer = setInterval(() => {
+        const elapsedSec = Math.floor((Date.now() - startMs) / 1000);
+        const remainingSec = Math.max(0, durationSec - elapsedSec);
+        const mins = String(Math.floor(remainingSec / 60)).padStart(2, '0');
+        const secs = String(remainingSec % 60).padStart(2, '0');
+        document.getElementById('examTimer').textContent = `${mins}:${secs}`;
+
+        if (remainingSec <= 0 && examActive && !isLocked) {
+          submitFinalAssessment(true);
+        }
+      }, 1000);
+    }
+
+    // =========================================================================
+    // CONTROLLED SUBMISSION & INSTANT SCORE SUMMARY
+    // =========================================================================
+    document.getElementById('btnSubmitExam').addEventListener('click', () => {
+      if (isLocked) return;
+      const answeredCount = Object.keys(answers.mcq).filter(k => answers.mcq[k]).length;
+      const confirmMsg = `Are you sure you want to submit your examination?\n\nMCQs Answered: ${answeredCount} / ${examConfig.mcqCount}\nOnce submitted, you cannot make changes.`;
+      if (confirm(confirmMsg)) {
+        submitFinalAssessment(false);
+      }
+    });
+
+    async function submitFinalAssessment(isAutoTimeout) {
+      if (isLocked) return;
+      const btn = document.getElementById('btnSubmitExam');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      try {
+        const res = await fetch('/api/student/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            admissionNo: studentSession.admissionNo,
+            answers
+          })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error || 'Submission failed. Please try again.');
+          btn.disabled = false;
+          btn.textContent = 'Submit Exam';
+          return;
+        }
+
+        examActive = false;
+        clearInterval(localSaveTimer);
+        clearInterval(heartbeatTimer);
+        clearInterval(countdownTimer);
+
+        renderFinalResult(studentSession, data.scoreSummary);
+      } catch (err) {
+        alert('Network drop detected. Your answers are safely stored locally. Please click Submit again once connected.');
+        btn.disabled = false;
+        btn.textContent = 'Submit Exam';
+      }
+    }
+
+    function renderFinalResult(student, summary) {
+      examActive = false;
+      document.getElementById('loginGateway').classList.add('hidden');
+      document.getElementById('examWorkspace').classList.add('hidden');
+      document.getElementById('lockdownModal').classList.add('hidden');
+      document.getElementById('resultView').classList.remove('hidden');
+
+      document.getElementById('resultCandidateMeta').textContent =
+        `${student.fullName} | Admission No: ${student.admissionNo} | ${student.grade}`;
+
+      document.getElementById('resTotalAutoScore').textContent =
+        `${summary.totalAutoScore} / ${summary.maxAutoScore}`;
+      document.getElementById('resMcqScore').textContent =
+        `${summary.mcqScore} / ${summary.totalMcqs}`;
+      document.getElementById('resMcqBreakdown').textContent =
+        `${summary.mcqCorrect} Correct, ${summary.mcqWrong} Wrong, ${summary.mcqUnattempted} Blank`;
+      document.getElementById('resBlanksScore').textContent =
+        `${summary.blanksCorrect} / ${summary.blanksTotal}`;
+    }
+  </script>
+</body>
+</html>
